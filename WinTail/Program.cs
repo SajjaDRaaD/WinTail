@@ -6,8 +6,15 @@ using WinTail;
 var MyActorSystem = ActorSystem.Create("MyActorSystem");
 
 // Creating actors
-var consoleWriterActor = MyActorSystem.ActorOf(Props.Create(() => new ConsoleWriterActor()));
-var consoleReaderActor = MyActorSystem.ActorOf(Props.Create(() => new ConsoleReaderActor(consoleWriterActor)));
+Props consoleWriteProps = Props.Create<ConsoleWriterActor>();
+IActorRef consoleWriterActor = MyActorSystem.ActorOf(consoleWriteProps, "consoleWriterActor");
+
+
+Props validationProps = Props.Create(() => new ValidationActor(consoleWriterActor));
+IActorRef validationActor = MyActorSystem.ActorOf(validationProps, "validationActor");
+
+Props consoleReaderProps = Props.Create<ConsoleReaderActor>(validationActor);
+IActorRef consoleReaderActor = MyActorSystem.ActorOf(consoleReaderProps, "consoleReaderActor");
 
 consoleReaderActor.Tell(ConsoleReaderActor.StartCommand);
 
