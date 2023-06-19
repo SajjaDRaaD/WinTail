@@ -4,15 +4,8 @@ namespace WinTail;
 
 public class ConsoleReaderActor : UntypedActor
 {
-    private readonly IActorRef _validationActor;
-    private readonly IActorRef _consoleWriterActor;
     public const string ExitCommand = "exit";
     public const string StartCommand = "start";
-
-    public ConsoleReaderActor(IActorRef validationActor)
-    {
-        _validationActor = validationActor;
-    }
 
     protected override void OnReceive(object message)
     {
@@ -45,7 +38,9 @@ public class ConsoleReaderActor : UntypedActor
 
         // otherwise, just hand message off to validation actor
         // (by telling its actor ref)
-        _validationActor.Tell(message);
+
+        var validationActor = Context.ActorSelection("akka://MyActorSystem/user/validationActor");
+        validationActor.Tell(message);
     }
 
 }
