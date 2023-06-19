@@ -48,24 +48,41 @@ namespace WinTail
 
         #endregion
 
-        private readonly string _filePath;
-        private readonly IActorRef _reporterActor;
-        private readonly FileObserver _fileObserver;
-        private readonly Stream _fileStream;
-        private readonly StreamReader _fileStreamReader;
+        private string _filePath;
+        private IActorRef _reporterActor;
+        private FileObserver _fileObserver;
+        private Stream _fileStream;
+        private StreamReader _fileStreamReader;
 
         public TailActor(IActorRef reporterActor,string filePath)
         {
             _filePath = filePath;
             _reporterActor = reporterActor;
 
-            _fileObserver = new FileObserver(Path.GetFullPath(_filePath),Self);
+        }
+
+        protected override void PreStart()
+        {
+
+            _fileObserver = new FileObserver(Path.GetFullPath(_filePath), Self);
             _fileObserver.Start();
 
             _fileStream = new FileStream(Path.GetFullPath(_filePath),
                 FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
             _fileStreamReader = new StreamReader(_fileStream, Encoding.UTF8);
+
+            var text = _fileStreamReader.ReadToEnd();
+            Self.Tell(new InitialRead(_filePath, text));
+        }
+
+        protected override void PostStop()
+        {
+            _fileObserver.Dispose();
+            _fileObserver = null;
+            _fileStreamReader.Close();
+            _fileStreamReader.Dispose();
+            base.PostStop();
         }
 
         protected override void OnReceive(object message)
@@ -78,16 +95,17 @@ namespace WinTail
                 {
                     _reporterActor.Tell(text);
                 }
-                else if (message is FileError)
-                {
-                    var fileError = message as FileError;
-                    _reporterActor.Tell($"Tail Error : {fileError.Reason}");
-                }
-                else if (message is InitialRead)
-                {
-                    var initialRead = message as InitialRead;
-                    _reporterActor.Tell(initialRead.Text);
-                }
+                
+            }
+            else if (message is FileError)
+            {
+                var fileError = message as FileError;
+                _reporterActor.Tell($"Tail Error : {fileError.Reason}");
+            }
+            else if (message is InitialRead)
+            {
+                var initialRead = message as InitialRead;
+                _reporterActor.Tell(initialRead.Text);
             }
         }
     }
